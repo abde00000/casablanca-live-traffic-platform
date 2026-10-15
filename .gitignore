@@ -26,3 +26,7 @@ Thumbs.db
 
 # Exclude all local traffic data and checkpoints
 /data/
+
+# Python cache
+__pycache__/
+*.py[cod]

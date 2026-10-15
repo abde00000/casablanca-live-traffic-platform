@@ -21,9 +21,10 @@ def main() -> None:
     )
     locations.write.format("delta").mode("overwrite").option("overwriteSchema", "true").save(GOLD_LOCATION_PATH)
 
-    silver = spark.readStream.format("delta").load(SILVER_PATH)
+    silver = spark.read.format("delta").load(SILVER_PATH)
+
     hourly = (
-        silver.withWatermark("collected_at", "2 hours")
+        silver
         .groupBy(
             F.window(F.col("collected_at"), "1 hour").alias("hour_window"),
             "location_id", "arrondissement", "road_name_osm",
@@ -47,7 +48,6 @@ def main() -> None:
             "avg_travel_time_index", "avg_delay_seconds", "avg_delay_pct",
             "avg_provider_confidence", "observation_count", "any_provider_closure_flag",
         )
-        # Analyst-defined bands aid display only; the continuous index is the primary measure.
         .withColumn(
             "analyst_delay_band",
             F.when(F.col("avg_travel_time_index") <= 1.10, "LOW_DELAY")
@@ -56,13 +56,16 @@ def main() -> None:
              .otherwise("VERY_HIGH_DELAY"),
         )
     )
-    query = (
-        hourly.writeStream.format("delta")
-        .outputMode("append")
-        .option("checkpointLocation", f"{CHECKPOINT_ROOT}/gold_hourly")
-        .start(GOLD_HOURLY_PATH)
+
+    (
+        hourly.write.format("delta")
+        .mode("overwrite")
+        .option("overwriteSchema", "true")
+        .save(GOLD_HOURLY_PATH)
     )
-    query.awaitTermination()
+
+    print("Gold hourly aggregation refreshed successfully.")
+    spark.stop()
 
 
 if __name__ == "__main__":

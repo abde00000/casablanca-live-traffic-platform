@@ -29,6 +29,7 @@ services:
     environment:
       SERVICE_NAME: metastore
       DB_DRIVER: postgres
+      IS_RESUME: "true"
       SERVICE_OPTS: >-
         -Djavax.jdo.option.ConnectionDriverName=org.postgresql.Driver
         -Djavax.jdo.option.ConnectionURL=jdbc:postgresql://postgres-metastore:5432/${POSTGRES_DB:-hive_metastore}
@@ -117,7 +118,7 @@ services:
     image: apache/spark:3.5.1
     container_name: casa-spark-worker
     hostname: spark-worker
-    command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077", "--webui-port", "8081"]
+    command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077", "--webui-port", "8081", "--cores", "6"]
     environment:
       SPARK_NO_DAEMONIZE: "true"
     depends_on:

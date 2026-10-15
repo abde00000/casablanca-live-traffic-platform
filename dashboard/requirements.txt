@@ -1,0 +1,6 @@
+streamlit>=1.37,<2
+streamlit-autorefresh>=1.0.1,<2
+pandas>=2.1,<4
+plotly>=5.20,<7
+deltalake>=0.17,<2
+pyarrow>=15,<25
