@@ -1,0 +1,17 @@
+location_id,arrondissement,road_name_osm,latitude,longitude,osm_way_id,osm_relation_id,osm_highway_class
+AL_FIDA,Al Fida,Boulevard Bouchaib Doukkali,33.564304,-7.591813,422535904,2801452,primary
+ANFA,Anfa,Boulevard de l'Ocean Atlantique,33.582574,-7.696848,1364934372,2801287,primary
+AIN_CHOCK,Aïn Chock,Boulevard El Hachmi El Filali,33.527449,-7.617109,421424382,2801442,primary
+AIN_SEBAA,Aïn Sebaâ,Route de Rabat,33.604102,-7.543362,1097256225,2801460,primary
+BEN_MSICK,Ben M'Sick,Boulevard de l'Unité Africaine,33.556839,-7.584082,156830650,2801410,secondary
+HAY_HASSANI,Hay Hassani,Boulevard Mustapha Salamat,33.544991,-7.685977,1113186171,2801343,secondary
+HAY_MOHAMMADI,Hay Mohammadi,Boulevard Ibn Zair Abdessalam,33.589553,-7.564278,637304502,2801458,tertiary
+MERS_SULTAN,Mers Sultan,Boulevard Mohammed VI,33.576292,-7.599110,1055797074,2801453,primary
+MOULAY_RACHID,Moulay Rachid,Avenue du Commandant Idriss Elharti,33.566643,-7.542174,511748275,2801402,primary
+SBATA,Sbata,Boulevard Al Joulane,33.538705,-7.555615,589080617,2801415,secondary
+SIDI_BELYOUT,Sidi Belyout,Boulevard des Almohades,33.599124,-7.613345,521254455,4743250,primary
+SIDI_BERNOUSSI,Sidi Bernoussi,Boulevard Al Bina,33.619721,-7.503007,421825866,2801461,secondary
+SIDI_MOUMEN,Sidi Moumen,Boulevard Omar Ibn Al Khattab,33.591825,-7.506108,717126177,2801372,tertiary
+SIDI_OTHMANE,Sidi Othmane,Avenue du Commandant Idriss Elharti,33.556541,-7.559410,585542290,2801406,primary
+ROCHES_NOIRES,Roches Noires,Rue Zineb Ishaq,33.585374,-7.579855,732967276,2801457,tertiary
+MAARIF,Maârif,Boulevard Anoual,33.570835,-7.635758,184134306,2801474,secondary

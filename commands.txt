@@ -1,0 +1,122 @@
+CASABLANCA LIVE TRAFFIC INTELLIGENCE PLATFORM — LOCAL RUNBOOK
+============================================================
+
+This project ingests real TomTom Flow Segment API responses. It has no
+synthetic traffic generator or placeholder-event fallback. Set up your own API
+key locally; never share or commit the key.
+
+0. Prepare secrets and local paths
+----------------------------------
+cp .env.example .env
+# Edit .env locally:
+# - set TOMTOM_API_KEY to your private Traffic Flow API key
+# - change POSTGRES_PASSWORD
+# - confirm the current account quota and API terms before collecting/storing data
+
+mkdir -p data/collector data/warehouse data/checkpoints
+
+1. Start the infrastructure
+---------------------------
+docker compose up -d --build
+docker compose ps
+
+Wait until Kafka, PostgreSQL, the Hive Metastore, and the Spark master are
+healthy. Local UIs (bound to loopback) are:
+- Spark master: http://localhost:8080
+- Spark worker: http://localhost:8081
+- Kafka UI: http://localhost:8082
+
+2. Create the Kafka topic once
+------------------------------
+docker exec -it casa-kafka /opt/kafka/bin/kafka-topics.sh \
+  --create --if-not-exists \
+  --topic traffic-flow-raw \
+  --bootstrap-server kafka:9092 \
+  --partitions 3 \
+  --replication-factor 1
+
+docker exec -it casa-kafka /opt/kafka/bin/kafka-topics.sh \
+  --describe --topic traffic-flow-raw --bootstrap-server kafka:9092
+
+3. Start the Spark streams in separate terminals
+------------------------------------------------
+All commands run inside the Spark worker. Keep each command running in its own
+terminal. The first package download requires internet access.
+
+Shared Spark package arguments:
+--master spark://spark-master:7077 \
+--conf spark.jars.ivy=/tmp/spark-ivy \
+--packages io.delta:delta-spark_2.12:3.2.0,org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1
+
+Terminal A — Bronze (start first):
+docker exec -it casa-spark-worker /opt/spark/bin/spark-submit \
+  --master spark://spark-master:7077 \
+  --conf spark.jars.ivy=/tmp/spark-ivy \
+  --packages io.delta:delta-spark_2.12:3.2.0,org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 \
+  /opt/spark-apps/traffic_bronze.py
+
+Terminal B — Silver (start after Bronze has created its Delta path):
+docker exec -it casa-spark-worker /opt/spark/bin/spark-submit \
+  --master spark://spark-master:7077 \
+  --conf spark.jars.ivy=/tmp/spark-ivy \
+  --packages io.delta:delta-spark_2.12:3.2.0,org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 \
+  /opt/spark-apps/traffic_silver.py
+
+Terminal C — Gold (start after Silver has created its Delta path):
+docker exec -it casa-spark-worker /opt/spark/bin/spark-submit \
+  --master spark://spark-master:7077 \
+  --conf spark.jars.ivy=/tmp/spark-ivy \
+  --packages io.delta:delta-spark_2.12:3.2.0,org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 \
+  /opt/spark-apps/traffic_gold.py
+
+4. Start live API collection
+----------------------------
+Verify .env contains a valid key and the collector settings are conservative.
+The default is one request per hour for each of 16 OSM-sourced locations.
+The collector has a local monthly request budget and will stop instead of
+exceeding it.
+
+docker compose --profile live up -d --build traffic-collector
+docker compose logs -f traffic-collector
+
+The first cycle starts immediately. Only successful API responses are
+published; authentication/quota errors stop collection, and missing data is
+not replaced by generated records. If the API key is invalid, stop the service,
+correct the key locally, and restart it.
+
+5. Register Delta locations and query views
+-------------------------------------------
+After Bronze/Silver/Gold have started and at least one real observation has
+passed through the pipeline, run:
+
+docker exec -it casa-spark-worker /opt/spark/bin/spark-sql \
+  --master spark://spark-master:7077 \
+  --conf spark.jars.ivy=/tmp/spark-ivy \
+  --packages io.delta:delta-spark_2.12:3.2.0 \
+  --conf spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension \
+  --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
+  --conf spark.sql.catalogImplementation=hive \
+  --conf spark.hadoop.hive.metastore.uris=thrift://hive-metastore:9083 \
+  --conf spark.sql.hive.metastore.version=3.1.3 \
+  --conf spark.sql.hive.metastore.jars=maven \
+  --conf spark.sql.warehouse.dir=/opt/traffic-data/warehouse \
+  -f /opt/spark-sql/SQL.txt
+
+Example queries:
+
+USE casablanca_traffic;
+SELECT * FROM v_hourly_traffic_congestion ORDER BY hour_start_utc DESC LIMIT 50;
+SELECT arrondissement, AVG(avg_travel_time_index) AS mean_tti,
+       SUM(observation_count) AS observations
+FROM v_hourly_traffic_congestion
+GROUP BY arrondissement ORDER BY mean_tti DESC;
+SELECT * FROM v_observation_quality;
+
+6. Stop services and protect local data
+---------------------------------------
+docker compose --profile live down
+
+Delta data and checkpoints are under ./data. Back them up before deleting or
+resetting them. Do not run multiple copies of the same Spark query against the
+same checkpoint. If schemas change, use a deliberate migration or a clean,
+backed-up development warehouse/checkpoint directory.

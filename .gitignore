@@ -1,0 +1,28 @@
+# Secrets
+.env
+*.pem
+*.key
+
+# Local traffic data, API usage state, checkpoints, and logs
+/data/collector/
+data/warehouse/
+data/checkpoints/
+data/delta/
+data/logs/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Exclude all local traffic data and checkpoints
+/data/

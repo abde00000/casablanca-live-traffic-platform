@@ -1,0 +1,58 @@
+CREATE DATABASE IF NOT EXISTS casablanca_traffic;
+USE casablanca_traffic;
+
+CREATE TABLE IF NOT EXISTS traffic_bronze
+USING DELTA
+LOCATION '/opt/traffic-data/delta/bronze/traffic_flow_raw';
+
+CREATE TABLE IF NOT EXISTS traffic_silver
+USING DELTA
+LOCATION '/opt/traffic-data/delta/silver/traffic_flow';
+
+CREATE TABLE IF NOT EXISTS traffic_silver_rejects
+USING DELTA
+LOCATION '/opt/traffic-data/delta/silver/traffic_flow_rejects';
+
+CREATE TABLE IF NOT EXISTS traffic_hourly_by_arrondissement
+USING DELTA
+LOCATION '/opt/traffic-data/delta/gold/traffic_hourly_by_arrondissement';
+
+CREATE TABLE IF NOT EXISTS dim_traffic_location
+USING DELTA
+LOCATION '/opt/traffic-data/delta/gold/dim_traffic_location';
+
+CREATE OR REPLACE VIEW v_hourly_traffic_congestion AS
+SELECT
+    h.hour_start_utc,
+    h.hour_end_utc,
+    h.location_id,
+    h.arrondissement,
+    h.road_name_osm,
+    d.latitude,
+    d.longitude,
+    h.avg_current_speed_kmh,
+    h.avg_free_flow_speed_kmh,
+    h.avg_speed_ratio,
+    h.avg_travel_time_index,
+    h.avg_delay_seconds,
+    h.avg_delay_pct,
+    h.avg_provider_confidence,
+    h.observation_count,
+    h.any_provider_closure_flag,
+    h.analyst_delay_band
+FROM traffic_hourly_by_arrondissement h
+LEFT JOIN dim_traffic_location d
+    ON h.location_id = d.location_id;
+
+CREATE OR REPLACE VIEW v_observation_quality AS
+SELECT
+    'accepted' AS record_class,
+    COUNT(*) AS record_count
+FROM traffic_silver
+UNION ALL
+SELECT
+    'rejected' AS record_class,
+    COUNT(*) AS record_count
+FROM traffic_silver_rejects;
+
+SHOW TABLES;
